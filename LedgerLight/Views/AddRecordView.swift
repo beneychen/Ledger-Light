@@ -11,6 +11,7 @@ import SwiftData
 struct AddRecordView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var supabaseService: SupabaseService
     @Query private var tags: [Tag]
     
     let ledger: Ledger
@@ -147,6 +148,9 @@ struct AddRecordView: View {
         
         modelContext.insert(record)
         try? modelContext.save()
+        
+        // 加入同步队列（延迟批量同步，不阻塞UI）
+        supabaseService.queueRecord(record)
         
         // 触感反馈
         let generator = UIImpactFeedbackGenerator(style: .medium)
@@ -316,11 +320,12 @@ struct NumberPadView: View {
     let onConfirm: () -> Void
     let onCancel: () -> Void
     
+    // 键盘布局：操作符在左，数字在右（符合右手使用习惯）
     let buttons: [[String]] = [
-        ["7", "8", "9", "+"],
-        ["4", "5", "6", "-"],
-        ["1", "2", "3", "⌫"],
-        [".", "0", "完成", "="]
+        ["+", "7", "8", "9"],
+        ["-", "4", "5", "6"],
+        ["⌫", "1", "2", "3"],
+        ["=", ".", "0", "完成"]
     ]
     
     var body: some View {
@@ -330,6 +335,7 @@ struct NumberPadView: View {
                     ForEach(row, id: \.self) { button in
                         NumberButton(
                             title: button,
+                            isOperator: ["+", "-", "=", "⌫"].contains(button),
                             action: { handleButtonTap(button) }
                         )
                     }
@@ -422,15 +428,14 @@ struct NumberPadView: View {
 // MARK: - 数字按钮
 struct NumberButton: View {
     let title: String
+    var isOperator: Bool = false
     let action: () -> Void
     
     var backgroundColor: Color {
         switch title {
         case "完成":
             return .blue
-        case "+", "-", "=":
-            return Color(.systemGray4)
-        case "⌫":
+        case "+", "-", "=", "⌫":
             return Color(.systemGray4)
         default:
             return Color(.systemBackground)
@@ -446,13 +451,21 @@ struct NumberButton: View {
         }
     }
     
+    // 操作符按钮窄一些，数字按钮宽一些
+    var buttonWidth: CGFloat? {
+        if isOperator {
+            return 60
+        }
+        return nil
+    }
+    
     var body: some View {
         Button(action: action) {
             Text(title)
                 .font(.title2)
                 .fontWeight(.medium)
                 .foregroundColor(foregroundColor)
-                .frame(maxWidth: .infinity)
+                .frame(width: buttonWidth, maxWidth: isOperator ? nil : .infinity)
                 .frame(height: 56)
                 .background(backgroundColor)
         }

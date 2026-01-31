@@ -29,5 +29,9 @@
     </array>
     <key>UIUserInterfaceStyle</key>
     <string>Automatic</string>
+    <key>SUPABASE_URL</key>
+    <string>$(SUPABASE_URL)</string>
+    <key>SUPABASE_PUBLISHABLE_KEY</key>
+    <string>$(SUPABASE_PUBLISHABLE_KEY)</string>
 </dict>
 </plist>

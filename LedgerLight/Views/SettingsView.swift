@@ -3,6 +3,7 @@
 //  LedgerLight
 //
 //  设置视图 - 包含数据导出功能
+//  CloudKit 自动同步，无需手动登录管理
 //
 
 import SwiftUI
@@ -23,6 +24,35 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                // iCloud 同步状态
+                Section {
+                    HStack {
+                        Image(systemName: "icloud.fill")
+                            .font(.title)
+                            .foregroundColor(.blue)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("iCloud 同步")
+                                .font(.body)
+                                .fontWeight(.medium)
+                            
+                            Text("数据自动同步到 iCloud")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                    }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("云同步")
+                } footer: {
+                    Text("使用同一 Apple ID 登录的设备会自动同步数据")
+                }
+                
                 // 数据统计
                 Section {
                     HStack {

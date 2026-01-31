@@ -113,28 +113,115 @@ P1 - 下个阶段需要支持，导出到飞书多维表格。
 |------|------|------|
 | 平台 | iOS 17+ | 使用最新SwiftUI特性 |
 | UI框架 | SwiftUI | 原生声明式UI，极简实现 |
-| 数据持久化 | SwiftData | Apple最新ORM框架 |
+| 数据持久化 | SwiftData + CloudKit | 本地存储 + iCloud自动同步 |
 | 图表 | Swift Charts | 原生图表框架 |
 | 架构 | MVVM | 状态驱动的响应式架构 |
+
+## 数据存储方案
+
+### 为什么选择 CloudKit？
+
+| 方案 | 优点 | 缺点 |
+|------|------|------|
+| **CloudKit** ✅ | 与SwiftData一行代码集成、自动同步、原生支持 | 需要付费开发者账号($99/年) |
+| Supabase | 开源免费 | 需要配置后端、手动实现同步 |
+| Firebase | 功能丰富 | 非开源、供应商锁定 |
+| 自建后端 | 完全控制 | 开发成本高 |
+
+既然发布到 App Store 必须购买 $99/年的开发者账号，那就直接使用 CloudKit，代码更简洁！
+
+### 架构设计
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                         iOS App                               │
+│                                                              │
+│  ┌────────────┐    ┌─────────────────────────────────────┐  │
+│  │  SwiftUI   │───►│         SwiftData + CloudKit        │  │
+│  │   Views    │    │   cloudKitDatabase: .automatic      │  │
+│  └────────────┘    └─────────────────────────────────────┘  │
+│                                    │                         │
+│                                    │ 自动同步                │
+│                                    ▼                         │
+└──────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ 自动
+                                    ▼
+┌──────────────────────────────────────────────────────────────┐
+│                        iCloud                                │
+│                                                              │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │                    CloudKit Database                     ││
+│  │  • 自动同步所有 SwiftData 数据                           ││
+│  │  • 基于 Apple ID 的用户隔离                              ││
+│  │  • 跨设备实时同步                                        ││
+│  │  • 离线支持，网络恢复后自动同步                           ││
+│  └─────────────────────────────────────────────────────────┘│
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 数据同步机制
+
+**一行代码实现云同步：**
+
+```swift
+let modelConfiguration = ModelConfiguration(
+    schema: schema,
+    isStoredInMemoryOnly: false,
+    cloudKitDatabase: .automatic  // 就这一行！
+)
+```
+
+**CloudKit 自动处理：**
+- ✅ 数据变更监听
+- ✅ 增量同步
+- ✅ 冲突解决
+- ✅ 离线缓存
+- ✅ 网络恢复后自动同步
+- ✅ 基于 Apple ID 的数据隔离
+
+**无需手动实现：**
+- ❌ 不需要登录页面
+- ❌ 不需要同步队列
+- ❌ 不需要认证状态管理
+- ❌ 不需要手动处理网络状态
 
 ## 项目结构
 
 ```
-LedgerLight/
-├── LedgerLightApp.swift          # App入口
-├── Info.plist                    # 配置文件
-├── Assets.xcassets/              # 资源文件
-├── Models/
-│   ├── Models.swift              # 数据模型 (Tag, Record, Ledger)
-│   └── AppState.swift            # 全局状态管理
-└── Views/
-    ├── ContentView.swift         # 主入口视图
-    ├── MainTabView.swift         # Tab导航 + 主页
-    ├── AddRecordView.swift       # 记账流页面
-    ├── ChartView.swift           # 图表分析页面
-    ├── LedgerListView.swift      # 账本管理页面
-    └── SettingsView.swift        # 设置页面
+ledger-light/
+├── .gitignore                    # Git忽略文件
+├── RFC.md                        # 设计文档
+├── LedgerLight/
+│   ├── LedgerLightApp.swift      # App入口（配置CloudKit）
+│   ├── Info.plist                # 配置文件
+│   ├── Assets.xcassets/          # 资源文件
+│   ├── Models/
+│   │   ├── Models.swift          # 数据模型 (Tag, Record, Ledger)
+│   │   └── AppState.swift        # 全局状态管理
+│   └── Views/
+│       ├── ContentView.swift     # 主入口视图
+│       ├── MainTabView.swift     # Tab导航 + 主页
+│       ├── AddRecordView.swift   # 记账流页面
+│       ├── ChartView.swift       # 图表分析页面
+│       ├── LedgerListView.swift  # 账本管理页面
+│       └── SettingsView.swift    # 设置页面
+└── LedgerLight.xcodeproj/        # Xcode项目文件
 ```
+
+### Xcode 配置步骤
+
+1. **添加 iCloud 能力**
+   - Signing & Capabilities → + Capability → iCloud
+   - 勾选 CloudKit
+   - 创建或选择 CloudKit Container
+
+2. **确保 Bundle ID 正确**
+   - 与 Apple Developer 后台一致
+
+3. **运行测试**
+   - 模拟器或真机运行
+   - 数据自动同步到 iCloud
 
 ## 数据模型设计
 
@@ -201,15 +288,16 @@ class Ledger {
 ├─────────────────────────────────┤
 │  📅 1/31 周五     备注（选填）  │  ← 日期+备注
 ├─────────────────────────────────┤
-│   7   8   9   +                 │
-│   4   5   6   -                 │  ← 自定义数字键盘
-│   1   2   3   ⌫                │     支持简单计算
-│   .   0  完成  =                │
+│  +  │   7     8     9          │
+│  -  │   4     5     6          │  ← 数字键盘（右手优化）
+│  ⌫  │   1     2     3          │     操作符在左，数字在右
+│  =  │   .     0    完成        │
 └─────────────────────────────────┘
 ```
 
 **特性：**
 - 自定义数字键盘，支持加减计算
+- **数字靠右布局**，符合右手操作习惯
 - 标签横向滚动，一键选择
 - 日期默认今天，可修改
 - 丝滑的动画过渡

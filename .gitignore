@@ -1,0 +1,34 @@
+# 秒记 LedgerLight
+
+## 依赖
+- macOS 项目
+- .DS_Store
+.DS_Store
+*.swp
+*~
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# Swift Package Manager
+.build/
+Packages/
+Package.resolved
+
+# CocoaPods (if used)
+Pods/
+
+# Secrets - 敏感配置，不要提交！
+LedgerLight/Secrets.xcconfig
+Secrets.xcconfig
+*.xcconfig
+!*.xcconfig.example
+
+# Environment
+.env
+.env.local
+.env.*.local

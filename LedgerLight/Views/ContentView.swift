@@ -3,6 +3,7 @@
 //  LedgerLight
 //
 //  主入口视图
+//  CloudKit 自动处理同步，无需手动管理认证状态
 //
 
 import SwiftUI
@@ -21,14 +22,8 @@ struct ContentView: View {
             if let defaultLedger = ledgers.first(where: { $0.isDefault }) ?? ledgers.first {
                 MainTabView(ledger: defaultLedger)
             } else {
-                // 首次启动时显示欢迎页面
-                WelcomeView()
-            }
-        }
-        .onAppear {
-            if !hasInitialized {
-                initializeDefaultData()
-                hasInitialized = true
+                // 首次启动，显示加载中（等待默认数据创建）
+                LoadingView()
             }
         }
         .sheet(isPresented: $appState.showAddRecord) {
@@ -36,6 +31,12 @@ struct ContentView: View {
                 AddRecordView(ledger: defaultLedger)
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
+            }
+        }
+        .onAppear {
+            if !hasInitialized {
+                initializeDefaultData()
+                hasInitialized = true
             }
         }
     }
@@ -56,6 +57,23 @@ struct ContentView: View {
         }
         
         try? modelContext.save()
+    }
+}
+
+// MARK: - 加载视图
+struct LoadingView: View {
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "book.fill")
+                .font(.system(size: 60))
+                .foregroundColor(.blue)
+            
+            ProgressView()
+            
+            Text("正在加载...")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
     }
 }
 
